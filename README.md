@@ -19,3 +19,36 @@ Run the following command to configure Docker authentication with Google Cloud:
   ```sh
   gcloud auth configure-docker
   ```
+
+### Step 2: Tag Your Docker Image
+
+Before pushing, tag your local Docker image to match the GCR format:
+
+  ```sh
+  docker tag YOUR_IMAGE gcr.io/PROJECT_ID/YOUR_TAG
+  ```
+
+### Step 3: Push the Docker Image to GCR
+
+Now, push the tagged image to GCR:
+
+  ```sh
+  docker push gcr.io/PROJECT_ID/YOUR_TAG
+  ```
+
+### Step 4: Verify the Image in GCR
+
+To check if your image was successfully pushed, list the images in your registry:
+
+  ```sh
+  gcloud container images list --repository=gcr.io/PROJECT_ID
+  ```
+
+### Step 5: Run the Image from GCR
+
+To pull and run the image from GCR, use the following commands:
+
+  ```sh
+  docker pull gcr.io/PROJECT_ID/YOUR_TAG
+  docker run -p PORT:PORT gcr.io/PROJECT_ID/YOUR_TAG
+  ```
