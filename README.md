@@ -1,54 +1,101 @@
-# Deploying a Docker Image to Google Container Registry (GCR)
+# Deploying Vite React App to Kubernetes
 
-This guide explains how to push a Docker image to **Google Container Registry (GCR)** and run it.
+This guide walks you through the steps to deploy a Vite React app to a Kubernetes cluster. It includes building a Docker image, creating a Kubernetes deployment, and setting up a service to expose the app.
 
 ## Prerequisites
 
-- Install **Google Cloud SDK** ([Download](https://cloud.google.com/sdk/docs/install))
-- Install **Docker** ([Download](https://www.docker.com/get-started))
-- Have a **Google Cloud Project** (Replace `PROJECT_ID` with your actual project ID)
-- Enable the **Google Container Registry API**
+- A Kubernetes cluster running (e.g., Minikube, AWS EKS, GKE, or a local setup with kubectl access).
+- Docker installed and configured.
+- kubectl installed and configured to interact with your Kubernetes cluster.
 
-  ```sh
-  gcloud services enable containerregistry.googleapis.com
+## Steps
+
+### 1. **Setup the Kubernetes Cluster**
+
+If you don’t already have a Kubernetes cluster, follow the instructions to set it up:
+
+- **Minikube (Local Development):**
+  ```bash
+  minikube start
   ```
-### Step 1. Authenticate Docker with Google Cloud
-
-Run the following command to configure Docker authentication with Google Cloud:
-
-  ```sh
-  gcloud auth configure-docker
-  ```
-
-### Step 2: Tag Your Docker Image
-
-Before pushing, tag your local Docker image to match the GCR format:
-
-  ```sh
-  docker tag YOUR_IMAGE gcr.io/PROJECT_ID/YOUR_TAG
+Check if it working:
+  ```bash
+  kubectl get nodes
   ```
 
-### Step 3: Push the Docker Image to GCR
+### 2. **Create the Docker Image**
+1. Dockerfile for Vite + React (using Nginx)
+  ```bash
+  # Stage 1: Build
+  FROM node:18 AS build
 
-Now, push the tagged image to GCR:
+  WORKDIR /app
+  COPY package*.json ./
+  RUN npm install
+  COPY . .
+  RUN npm run build
 
-  ```sh
-  docker push gcr.io/PROJECT_ID/YOUR_TAG
+  # Stage 2: Serve with Nginx
+  FROM nginx:alpine
+
+  COPY --from=build /app/dist /usr/share/nginx/html
+
+  # Copy custom Nginx config (optional)
+  COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+  EXPOSE 80
+  CMD ["nginx", "-g", "daemon off;"]
   ```
 
-### Step 4: Verify the Image in GCR
-
-To check if your image was successfully pushed, list the images in your registry:
-
-  ```sh
-  gcloud container images list --repository=gcr.io/PROJECT_ID
+2. Build the Docker Image: 
+Run the following command to build the Docker image from the Dockerfile:
+  ```bash
+  docker build -t vite-react-app .
   ```
 
-### Step 5: Run the Image from GCR
-
-To pull and run the image from GCR, use the following commands:
-
-  ```sh
-  docker pull gcr.io/PROJECT_ID/YOUR_TAG
-  docker run -p PORT:PORT gcr.io/PROJECT_ID/YOUR_TAG
+3. Push the Docker Image to a Container Registry
+  ```bash
+  docker tag vite-react-app <your-dockerhub-username>/vite-react-app:latest
+  docker push <your-dockerhub-username>/vite-react-app:latest
   ```
+
+### 3. Create the Kubernetes Deployment
+Create the Deployment Manifest (deployment.yaml)
+  ```bash
+  apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vite-react-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vite-react-app
+  template:
+    metadata:
+      labels:
+        app: vite-react-app
+    spec:
+      containers:
+        - name: vite-react-app
+          image: <your-dockerhub-username>/vite-react-app:latest
+          ports:
+            - containerPort: 80
+  ```
+
+### 4. Create the Kubernetes Service
+Create the Service Manifest (service.yaml)
+  ```bash
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: vite-react-app
+  spec:
+    selector:
+      app: vite-react-app
+    ports:
+      - protocol: TCP
+        port: 80
+        targetPort: 80
+    type: LoadBalancer
+    ```
