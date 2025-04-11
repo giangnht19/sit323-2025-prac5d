@@ -18,7 +18,7 @@ If you don’t already have a Kubernetes cluster, follow the instructions to set
   ```bash
   minikube start
   ```
-Check if it working:
+- **Check if it working:**
   ```bash
   kubectl get nodes
   ```
